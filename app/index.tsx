@@ -74,6 +74,7 @@ export default function Index() {
     <ScrollView
       contentContainerStyle={styles.contentContainer}
     >
+      <Link href={{ pathname: '/weather' }}>날씨</Link>
       {pokemonData.map((pokemon) => (
         <Link key={pokemon.name}
           href={{ pathname: '/details', params: { name: pokemon.name } }}>
