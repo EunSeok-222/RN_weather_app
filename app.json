@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "wether-app",
+    "name": "오늘의 날씨와 코디",
     "slug": "wether-app",
     "version": "1.0.0",
     "orientation": "portrait",
