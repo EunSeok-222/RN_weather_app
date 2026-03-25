@@ -14,6 +14,7 @@ export default function TabLayout() {
                 paddingBottom: 10,
             }
         }}>
+
             <Tabs.Screen
                 name="index"
                 options={{
@@ -21,11 +22,12 @@ export default function TabLayout() {
                     tabBarIcon: ({ color, size }) => <Ionicons name="sunny" size={size} color={color} />,
                 }}
             />
+
             <Tabs.Screen
-                name="pokemon"
+                name="search"
                 options={{
-                    title: '포켓몬',
-                    tabBarIcon: ({ color, size }) => <Ionicons name="bug" size={size} color={color} />,
+                    title: '검색',
+                    tabBarIcon: ({ color, size }) => <Ionicons name="search" size={size} color={color} />,
                 }}
             />
         </Tabs>

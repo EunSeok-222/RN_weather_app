@@ -1,17 +1,14 @@
 import { Stack } from "expo-router";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <QueryClientProvider client={queryClient}>
+      <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)/pokemon" options={{
-        headerShown: true,
-        title: "포켓몬 상세 정보",
-        headerBackButtonDisplayMode: "minimal",
-        headerTitleAlign: "center",
-        presentation: "card",
-        backgroundColor: "red",
-      }} />
-    </Stack>
+      </Stack>
+    </QueryClientProvider>
   )
 }
