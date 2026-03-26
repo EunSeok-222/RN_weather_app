@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { OutfitCategory } from '../services/outfitService';
 import AvatarCoat from './avatars/AvatarCoat';
 import AvatarHeavyOuter from './avatars/AvatarHeavyOuter';
@@ -63,6 +63,19 @@ function getGradientColors(temp: number): [string, string] {
 
 export default function WeatherAvatar({ category, temp, recommendation }: WeatherAvatarProps) {
     const [startColor, endColor] = getGradientColors(temp);
+    const scale = useSharedValue(1);
+
+    useEffect(() => {
+        // 카테고리(옷)가 바뀌면 캐릭터가 기분 좋게 팝! 효과
+        scale.value = withSequence(
+            withTiming(1.15, { duration: 150, easing: Easing.out(Easing.back(1.5)) }),
+            withTiming(1, { duration: 200, easing: Easing.in(Easing.quad) })
+        );
+    }, [category, scale]);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }]
+    }));
 
     return (
         <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.wrapper}>
@@ -72,9 +85,9 @@ export default function WeatherAvatar({ category, temp, recommendation }: Weathe
                 end={{ x: 1, y: 1 }}
                 style={styles.container}
             >
-                <View style={styles.avatarContainer}>
+                <Animated.View style={[styles.avatarContainer, animatedStyle]}>
                     <AvatarByCategory category={category} />
-                </View>
+                </Animated.View>
 
                 <View style={styles.textContainer}>
                     <Text style={styles.categoryLabel}>{categoryLabels[category]}</Text>

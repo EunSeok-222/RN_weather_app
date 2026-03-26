@@ -41,8 +41,8 @@ const ForecastItem = ({ item, index, onSelect }: { item: any, index: number, onS
 
   return (
     <Animated.View style={[styles.itemContainer, animatedStyle]}>
-      <TouchableOpacity 
-        style={styles.touchable} 
+      <TouchableOpacity
+        style={styles.touchable}
         onPress={() => onSelect?.(item)}
         activeOpacity={0.6}
       >
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    width: 60,
+    width: 70,
     color: '#444',
     fontWeight: '500',
   },

@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import HourlyFashionGuide from "../../components/HourlyFashionGuide";
@@ -55,6 +55,17 @@ export default function WeatherScreen() {
         type: 'hourly' | 'daily';
         data: any;
     } | null>(null);
+
+    const scrollViewRef = useRef<ScrollView>(null);
+
+    const [weatherCardY, setWeatherCardY] = React.useState(0);
+
+    // 선택 항목 변경 시 자동으로 최상단으로 스크롤 (요일 선택 시에만)
+    useEffect(() => {
+        if (selectedItem?.type === 'daily') {
+            scrollViewRef.current?.scrollTo({ y: weatherCardY, animated: true });
+        }
+    }, [selectedItem, weatherCardY]);
 
 
     const { data: forecastData } = useHourlyForecast(
@@ -223,6 +234,7 @@ export default function WeatherScreen() {
             </View>
 
             <ScrollView
+                ref={scrollViewRef}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -238,7 +250,7 @@ export default function WeatherScreen() {
                     <AnimatedInsightCard insight={analyzeWeather(forecastData.todayDaily, dailyForecastData || []) as any} />
                 )}
 
-                <View style={styles.weatherWrapper}>
+                <View onLayout={(e) => setWeatherCardY(e.nativeEvent.layout.y)} style={styles.weatherWrapper}>
                     {loading ? (
                         <Text style={styles.loadingText}>날씨 정보를 불러오는 중...</Text>
                     ) : (
@@ -249,9 +261,11 @@ export default function WeatherScreen() {
                             low={Math.round(displayData.low)}
                             city={city}
                             humidity={displayData.humidity}
-                            windSpeed={displayData.windSpeed}
+                            windSpeed={Math.round(displayData.windSpeed)}
                             dt={displayData.dt}
                             description={displayData.description}
+                            delayAnimation={selectedItem?.type === 'daily'}
+                            shouldAnimate={selectedItem?.type !== 'hourly'}
                         />
                     )}
                 </View>
