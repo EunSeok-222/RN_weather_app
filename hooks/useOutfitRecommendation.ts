@@ -18,14 +18,14 @@ const checkAndFetchOutfit = async (temp: number, windSpeed: number, weatherStatu
     if (cachedString) {
       const cached: OutfitCache = JSON.parse(cachedString);
       
-      const tempDiff = Math.abs(cached.temp - temp);
-      const windDiff = Math.abs(cached.windSpeed - windSpeed);
+      const isExactMatch = Math.round(cached.temp) === Math.round(temp) && 
+                           Math.round(cached.windSpeed) === Math.round(windSpeed);
       
       // 1시간 이내의 캐시인지 확인
       const isRecent = Date.now() - cached.timestamp < 1000 * 60 * 60;
-      
-      // 온도 및 풍속 오차가 1 이내이면 캐시 응답 반환
-      if (tempDiff <= 1 && windDiff <= 1 && isRecent) {
+
+      // 1시간 이내의 캐시이고 정확히 같은 조건일 때만 캐시 응답 반환
+      if (isExactMatch && isRecent) {
         console.log("로컬 스토리지 캐시 명중:", cached.data);
         return cached.data;
       }

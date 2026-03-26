@@ -48,6 +48,7 @@ export default function WeatherScreen() {
     const [humidity, setHumidity] = useState<number>(0);
     const [windSpeed, setWindSpeed] = useState<number>(0);
     const [dt, setDt] = useState<number>(0);
+    const [weatherDescription, setWeatherDescription] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(true);
     const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
     const [selectedItem, setSelectedItem] = useState<{
@@ -83,7 +84,7 @@ export default function WeatherScreen() {
         setLoading(true);
         try {
             const response = await fetch(
-                `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${myApiKey}&units=metric`
+                `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${myApiKey}&units=metric&lang=kr`
             );
             const json = await response.json();
 
@@ -113,54 +114,69 @@ export default function WeatherScreen() {
             setWindSpeed(json.wind.speed);
             setDt(json.dt);
             setWeatherType(mapWeatherMainToType(json.weather[0].main));
+            setWeatherDescription(json.weather[0].description);
+
+            // API에서 제공하는 도시 이름으로 업데이트 (주소 변환 실패 대비)
+            if (json.name) {
+                setCity(json.name);
+            }
         }
     };
 
 
     async function getCurrentLocation() {
         setLoading(true);
-        let data = await Location.requestForegroundPermissionsAsync();
-        if (data.status !== 'granted') {
-            console.error('위치 권한이 없습니다.');
-            setCity("위치 거부됨");
-            setLoading(false);
-            return;
-        }
-
-        let location;
         try {
-            location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-            });
-        } catch {
-            console.log("현재 위치 정보를 가져올 수 없어 마지막 위치를 시도합니다.");
-            location = await Location.getLastKnownPositionAsync({});
-        }
+            let data = await Location.requestForegroundPermissionsAsync();
+            if (data.status !== 'granted') {
+                console.warn('위치 권한이 거부되었습니다.');
+                setCity("위치 허용 필요");
+                return;
+            }
 
-        if (!location) {
-            console.error('위치 정보를 사용할 수 없습니다.');
-            setCity("위치 확인 불가");
-            setLoading(false);
-            return;
-        }
+            let location;
+            try {
+                // 웹에서 15초 이상 걸리면 타임아웃 처리하도록 옵션 추가 (원하는 값으로 조정 가능)
+                location = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced,
+                    // @ts-ignore: timeout is not in standard expo-location types for all platforms but works on web/native in some versions
+                    timeout: 10000 
+                });
+            } catch (e) {
+                console.warn("현재 위치 정보를 가져오지 못했습니다. 마지막 위치 확인 중...", e);
+                location = await Location.getLastKnownPositionAsync({});
+            }
 
-        const { coords: { latitude, longitude } } = location; // latitude위도, longitude경도 
-        setCoords({ lat: latitude, lon: longitude });
-        const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude }); //위도,경도로 주소 변환
-        if (reverseGeocode.length > 0) {
-            const address = reverseGeocode[0];
-            setCity(address.city || address.region || "알 수 없는 위치");
-        }
+            if (!location) {
+                console.error('위치 정보를 사용할 수 없습니다.');
+                setCity("위치 확인 불가");
+                return;
+            }
 
-        // 날씨 정보 가져오기
-        try {
+            const { coords: { latitude, longitude } } = location;
+            setCoords({ lat: latitude, lon: longitude });
+
+            try {
+                const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+                if (reverseGeocode.length > 0) {
+                    const address = reverseGeocode[0];
+                    setCity(address.city || address.region || "나의 위치");
+                }
+            } catch (e) {
+                console.warn("주소 변환 실패:", e);
+                setCity("나의 위치");
+            }
+
+            // 날씨 정보 가져오기
             const response = await fetch(
-                `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${myApiKey}&units=metric`
+                `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${myApiKey}&units=metric&lang=kr`
             );
             const json = await response.json();
             updateWeatherData(json);
+
         } catch (error) {
-            console.error("날씨 정보 상세 에러:", error);
+            console.error("위치 기반 날씨 가져오기 에러:", error);
+            setCity("날씨 로드 에러");
         } finally {
             setLoading(false);
         }
@@ -177,11 +193,13 @@ export default function WeatherScreen() {
         low: selectedItem?.type === 'daily' ? selectedItem.data.temp.min : low,
         dt: selectedItem ? selectedItem.data.dt : dt,
         humidity: selectedItem?.type === 'daily' ? selectedItem.data.humidity || humidity : humidity,
-        windSpeed: selectedItem?.type === 'daily' ? selectedItem.data.wind_speed || windSpeed : windSpeed,
+        windSpeed: selectedItem?.type === 'hourly' ? selectedItem.data.windSpeed : (selectedItem?.type === 'daily' ? selectedItem.data.wind_speed || windSpeed : windSpeed),
+        description: selectedItem?.type === 'hourly' ? selectedItem.data.weatherDescription : (selectedItem?.type === 'daily' ? selectedItem.data.weather[0].description : weatherDescription),
+        category: selectedItem?.type === 'hourly' ? selectedItem.data.category : null,
     };
 
     // OutfitData 재계산 (표시 기온 기준)
-    const { data: displayOutfitData } = useOutfitRecommendation(
+    const { data: displayOutfitData, isLoading: isOutfitLoading } = useOutfitRecommendation(
         Math.round(displayData.temp),
         Math.round(displayData.windSpeed),
         displayData.weatherType,
@@ -233,6 +251,7 @@ export default function WeatherScreen() {
                             humidity={displayData.humidity}
                             windSpeed={displayData.windSpeed}
                             dt={displayData.dt}
+                            description={displayData.description}
                         />
                     )}
                 </View>
@@ -247,13 +266,11 @@ export default function WeatherScreen() {
                     </TouchableOpacity>
                 )}
 
-                {displayOutfitData && (
-                    <WeatherAvatar
-                        category={displayOutfitData.category}
-                        temp={Math.round(displayData.temp)}
-                        recommendation={displayOutfitData.recommendation}
-                    />
-                )}
+                <WeatherAvatar
+                    category={displayOutfitData?.category || displayData.category || "long_sleeve"}
+                    temp={Math.round(displayData.temp)}
+                    recommendation={displayOutfitData?.recommendation || (isOutfitLoading ? "날씨에 맞는 추천을 불러오는 중..." : "알맞은 옷차림을 추천해줄게!")}
+                />
 
                 {forecastData && forecastData.items.length > 0 && (
                     <HourlyFashionGuide

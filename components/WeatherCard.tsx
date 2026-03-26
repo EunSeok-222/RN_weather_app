@@ -14,6 +14,7 @@ interface WeatherProps {
     humidity: number;
     windSpeed: number;
     dt: number;
+    description?: string;
 }
 
 const weatherInfo = {
@@ -24,9 +25,10 @@ const weatherInfo = {
     "눈": { colors: ["#d0daffff", "#5c5d61ff"], icon: "snow", desc: "눈" },
 };
 
-export default function WeatherCard({ type, temp, high, low, city, humidity, windSpeed, dt }: WeatherProps) {
+export default function WeatherCard({ type, temp, high, low, city, humidity, windSpeed, dt, description }: WeatherProps) {
     const dayName = new Date(dt * 1000).toLocaleDateString("ko-KR", { weekday: "long" });
-    const { colors, icon, desc } = weatherInfo[type] || weatherInfo["화창"];
+    const { colors, icon, desc: fallbackDesc } = weatherInfo[type] || weatherInfo["화창"];
+    const displayDesc = description || fallbackDesc;
 
     return (
         <LinearGradient colors={colors as [string, string, ...string[]]} style={styles.container}>
@@ -37,7 +39,7 @@ export default function WeatherCard({ type, temp, high, low, city, humidity, win
                 </View>
                 <View style={styles.infoContainer}>
                     <Text style={styles.tempText}>{temp}°</Text>
-                    <Text style={styles.descText}>{desc}</Text>
+                    <Text style={styles.descText}>{displayDesc}</Text>
                     <Text style={styles.highLowText}>최고: {high}° | 최저: {low}°</Text>
                 </View>
 

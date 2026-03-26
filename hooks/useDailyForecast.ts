@@ -23,9 +23,9 @@ async function fetchDailyForecast(
 ): Promise<DailyForecastItem[]> {
     let url: string;
     if (lat !== undefined && lon !== undefined) {
-        url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${myApiKey}&units=metric`;
+        url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${myApiKey}&units=metric&lang=kr`;
     } else if (cityName) {
-        url = `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${myApiKey}&units=metric`;
+        url = `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${myApiKey}&units=metric&lang=kr`;
     } else {
         throw new Error('lat/lon 또는 cityName이 필요합니다.');
     }

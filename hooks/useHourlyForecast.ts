@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { OutfitCategory } from '../services/outfitService';
+import { OutfitCategory, getFallbackOutfit } from '../services/outfitService';
 
 const myApiKey = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
@@ -8,6 +8,8 @@ export interface HourlyForecastItem {
     temp: number;       // 반올림된 기온
     category: OutfitCategory;
     weatherMain: string; // "Clear", "Clouds" 등
+    weatherDescription: string; // "맑음" 등
+    windSpeed: number; // 풍속 추가
 }
 
 export interface HourlyForecastResult {
@@ -26,20 +28,6 @@ export interface HourlyForecastResult {
     };
 }
 
-/**
- * 기온을 기반으로 OutfitCategory를 결정합니다.
- * (Gemini API를 호출하지 않고 온도 범위만으로 매핑)
- */
-function tempToCategory(temp: number): OutfitCategory {
-    if (temp <= 5) return 'heavy_outer';
-    if (temp <= 9) return 'coat';
-    if (temp <= 11) return 'jacket';
-    if (temp <= 16) return 'light_knit';
-    if (temp <= 19) return 'hoodie';
-    if (temp <= 22) return 'long_sleeve';
-    if (temp <= 27) return 'short_sleeve';
-    return 'sleeveless';
-}
 
 async function fetchHourlyForecast(
     lat?: number,
@@ -48,9 +36,9 @@ async function fetchHourlyForecast(
 ): Promise<HourlyForecastResult> {
     let url: string;
     if (lat !== undefined && lon !== undefined) {
-        url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${myApiKey}&units=metric`;
+        url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${myApiKey}&units=metric&lang=kr`;
     } else if (cityName) {
-        url = `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${myApiKey}&units=metric`;
+        url = `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${myApiKey}&units=metric&lang=kr`;
     } else {
         throw new Error('lat/lon 또는 cityName이 필요합니다.');
     }
@@ -85,8 +73,10 @@ async function fetchHourlyForecast(
         return {
             time: `${hour}시`,
             temp: roundedTemp,
-            category: tempToCategory(roundedTemp),
+            category: getFallbackOutfit(roundedTemp).category,
             weatherMain: item.weather[0].main,
+            weatherDescription: item.weather[0].description,
+            windSpeed: item.wind.speed,
         };
     });
 
