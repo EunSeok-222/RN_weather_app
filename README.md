@@ -1,5 +1,5 @@
 [날씨앱 웹으로 미리보기](https://rn-weather-app-tau.vercel.app/)
-# 🌤️ Weather Insight: AI 기반 맞춤형 날씨 비서
+# 🌤️ Weather Insight: AI 기반 맞춤형 날씨 앱
 **"단순한 수치를 넘어, 당신의 일상을 챙겨주는 기상 캐스터"**
 
 단순히 온도만 알려주는 것이 아니라, **Gemini AI**를 활용해 오늘 입을 옷을 추천하고, 세차하기 좋은 날인지 분석해주는 React Native 기반 날씨 애플리케이션입니다.
