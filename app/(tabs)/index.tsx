@@ -4,15 +4,37 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import HourlyFashionGuide from "../../components/HourlyFashionGuide";
 import WeatherAvatar from "../../components/WeatherAvatar";
 import WeatherCard from "../../components/WeatherCard";
 import { useHourlyForecast } from "../../hooks/useHourlyForecast";
 import { useOutfitRecommendation } from "../../hooks/useOutfitRecommendation";
+import { analyzeWeather } from "../../utils/weatherAnalyzer";
+import AnimatedInsightCard from "../../components/AnimatedInsightCard";
+import { useDailyForecast } from "../../hooks/useDailyForecast";
+import ForecastList from "../../components/ForecastList";
 
 
 type WeatherType = "화창" | "구름" | "비" | "천둥" | "눈";
 const myApiKey = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
+
+const weatherBackgroundColors: Record<WeatherType, [string, string, ...string[]]> = {
+    "화창": ["#FFD200", "#F7971E"],
+    "구름": ["#D7D2CC", "#304352"],
+    "비": ["#0052D4", "#4364F7", "#6FB1FC"],
+    "천둥": ["#1e3c72", "#2a5298"],
+    "눈": ["#d0daffff", "#5c5d61ff"],
+};
+
+const mapWeatherMainToType = (main: string): WeatherType => {
+    if (main === "Clear") return "화창";
+    if (main === "Clouds") return "구름";
+    if (main === "Rain" || main === "Drizzle") return "비";
+    if (main === "Thunderstorm") return "천둥";
+    if (main === "Snow") return "눈";
+    return "화창";
+};
 
 export default function WeatherScreen() {
     const router = useRouter();
@@ -28,13 +50,11 @@ export default function WeatherScreen() {
     const [dt, setDt] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+    const [selectedItem, setSelectedItem] = useState<{
+        type: 'hourly' | 'daily';
+        data: any;
+    } | null>(null);
 
-    const { data: outfitData } = useOutfitRecommendation(
-        Math.round(temp),
-        Math.round(windSpeed),
-        weatherType,
-        !loading && temp !== 0
-    );
 
     const { data: forecastData } = useHourlyForecast(
         coords?.lat,
@@ -43,19 +63,13 @@ export default function WeatherScreen() {
         !loading,
     );
 
-    const renderWeatherComponent = () => {
-        const props = {
-            type: weatherType,
-            temp: Math.round(temp),
-            high: Math.round(high),
-            low: Math.round(low),
-            city: city,
-            humidity: humidity,
-            windSpeed: windSpeed,
-            dt: dt
-        };
-        return <WeatherCard {...props} />;
-    };
+    const { data: dailyForecastData } = useDailyForecast(
+        coords?.lat,
+        coords?.lon,
+        searchCity || undefined,
+        !loading,
+    );
+
 
     useEffect(() => {
         if (searchCity) {
@@ -98,15 +112,10 @@ export default function WeatherScreen() {
             setHumidity(json.main.humidity);
             setWindSpeed(json.wind.speed);
             setDt(json.dt);
-
-            const mainWeather = json.weather[0].main;
-            if (mainWeather === "Clear") setWeatherType("화창");
-            else if (mainWeather === "Clouds") setWeatherType("구름");
-            else if (mainWeather === "Rain" || mainWeather === "Drizzle") setWeatherType("비");
-            else if (mainWeather === "Thunderstorm") setWeatherType("천둥");
-            else if (mainWeather === "Snow") setWeatherType("눈");
+            setWeatherType(mapWeatherMainToType(json.weather[0].main));
         }
     };
+
 
     async function getCurrentLocation() {
         setLoading(true);
@@ -158,8 +167,34 @@ export default function WeatherScreen() {
     }
 
 
+    const backgroundColors = weatherBackgroundColors[weatherType] || weatherBackgroundColors["화창"];
+
+    // 선택된 데이터에 따른 표시 값 결정
+    const displayData = {
+        temp: selectedItem?.type === 'hourly' ? selectedItem.data.temp : (selectedItem?.type === 'daily' ? selectedItem.data.temp.max : temp),
+        weatherType: selectedItem?.type === 'hourly' ? mapWeatherMainToType(selectedItem.data.weatherMain) : (selectedItem?.type === 'daily' ? mapWeatherMainToType(selectedItem.data.weather[0].main) : weatherType),
+        high: selectedItem?.type === 'daily' ? selectedItem.data.temp.max : high,
+        low: selectedItem?.type === 'daily' ? selectedItem.data.temp.min : low,
+        dt: selectedItem ? selectedItem.data.dt : dt,
+        humidity: selectedItem?.type === 'daily' ? selectedItem.data.humidity || humidity : humidity,
+        windSpeed: selectedItem?.type === 'daily' ? selectedItem.data.wind_speed || windSpeed : windSpeed,
+    };
+
+    // OutfitData 재계산 (표시 기온 기준)
+    const { data: displayOutfitData } = useOutfitRecommendation(
+        Math.round(displayData.temp),
+        Math.round(displayData.windSpeed),
+        displayData.weatherType,
+        !!displayData.temp
+    );
+
     return (
-        <View style={styles.container}>
+        <LinearGradient
+            colors={backgroundColors as [string, string, ...string[]]}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
             <StatusBar style="dark" />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.push("/search")} style={styles.menuButton}>
@@ -174,19 +209,49 @@ export default function WeatherScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                {/* Weather Insight Section */}
+                {loading || !forecastData?.todayDaily ? (
+                    <View style={styles.skeletonContainer}>
+                        <View style={styles.skeletonHeader} />
+                        <View style={styles.skeletonText} />
+                        <View style={styles.skeletonTextSmall} />
+                    </View>
+                ) : (
+                    <AnimatedInsightCard insight={analyzeWeather(forecastData.todayDaily, dailyForecastData || []) as any} />
+                )}
+
                 <View style={styles.weatherWrapper}>
                     {loading ? (
                         <Text style={styles.loadingText}>날씨 정보를 불러오는 중...</Text>
                     ) : (
-                        renderWeatherComponent()
+                        <WeatherCard
+                            type={displayData.weatherType}
+                            temp={Math.round(displayData.temp)}
+                            high={Math.round(displayData.high)}
+                            low={Math.round(displayData.low)}
+                            city={city}
+                            humidity={displayData.humidity}
+                            windSpeed={displayData.windSpeed}
+                            dt={displayData.dt}
+                        />
                     )}
                 </View>
 
-                {outfitData && (
+                {selectedItem && (
+                    <TouchableOpacity 
+                        style={styles.resetButton} 
+                        onPress={() => setSelectedItem(null)}
+                    >
+                        <Ionicons name="refresh-circle" size={24} color="#4D96FF" />
+                        <Text style={styles.resetText}>현재 날씨로 돌아가기</Text>
+                    </TouchableOpacity>
+                )}
+
+                {displayOutfitData && (
                     <WeatherAvatar
-                        category={outfitData.category}
-                        temp={Math.round(temp)}
-                        recommendation={outfitData.recommendation}
+                        category={displayOutfitData.category}
+                        temp={Math.round(displayData.temp)}
+                        recommendation={displayOutfitData.recommendation}
                     />
                 )}
 
@@ -196,17 +261,24 @@ export default function WeatherScreen() {
                         hasBigTempGap={forecastData.hasBigTempGap}
                         minTemp={forecastData.minTemp}
                         maxTemp={forecastData.maxTemp}
+                        onSelect={(item) => setSelectedItem({ type: 'hourly', data: item })}
+                    />
+                )}
+
+                {dailyForecastData && (
+                    <ForecastList 
+                        forecastData={dailyForecastData} 
+                        onSelect={(item) => setSelectedItem({ type: 'daily', data: item })}
                     />
                 )}
             </ScrollView>
-        </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "white",
     },
     header: {
         flexDirection: "row",
@@ -241,5 +313,50 @@ const styles = StyleSheet.create({
         alignItems: "stretch",
         justifyContent: "center",
         marginBottom: 10,
+    },
+    skeletonContainer: {
+        marginHorizontal: 15,
+        marginVertical: 10,
+        padding: 16,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        height: 140,
+        justifyContent: 'center',
+    },
+    skeletonHeader: {
+        width: '60%',
+        height: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        borderRadius: 4,
+        marginBottom: 12,
+    },
+    skeletonText: {
+        width: '90%',
+        height: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        borderRadius: 4,
+        marginBottom: 8,
+    },
+    skeletonTextSmall: {
+        width: '40%',
+        height: 14,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        borderRadius: 4,
+    },
+    resetButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        marginHorizontal: 100,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginBottom: 10,
+        gap: 5,
+    },
+    resetText: {
+        fontSize: 14,
+        color: '#4D96FF',
+        fontWeight: 'bold',
     },
 });

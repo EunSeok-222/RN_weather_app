@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { OutfitCategory } from '../services/outfitService';
 import { HourlyForecastItem } from '../hooks/useHourlyForecast';
@@ -19,6 +19,7 @@ interface HourlyFashionGuideProps {
     hasBigTempGap: boolean;
     minTemp: number;
     maxTemp: number;
+    onSelect?: (item: HourlyForecastItem) => void;
 }
 
 const ICON_SIZE = 56;
@@ -60,7 +61,7 @@ function getWeatherIcon(weatherMain: string): string {
     }
 }
 
-export default function HourlyFashionGuide({ items, hasBigTempGap, minTemp, maxTemp }: HourlyFashionGuideProps) {
+export default function HourlyFashionGuide({ items, hasBigTempGap, minTemp, maxTemp, onSelect }: HourlyFashionGuideProps) {
     if (items.length === 0) return null;
 
     return (
@@ -99,7 +100,11 @@ export default function HourlyFashionGuide({ items, hasBigTempGap, minTemp, maxT
                         key={`${item.time}-${index}`}
                         entering={FadeInRight.duration(400).delay(100 * index)}
                     >
-                        <View style={styles.card}>
+                        <TouchableOpacity 
+                            style={styles.card}
+                            onPress={() => onSelect?.(item)}
+                            activeOpacity={0.7}
+                        >
                             {/* 시간 */}
                             <Text style={styles.timeText}>{item.time}</Text>
 
@@ -120,7 +125,7 @@ export default function HourlyFashionGuide({ items, hasBigTempGap, minTemp, maxT
                             <Text style={[styles.tempText, { color: getTempColor(item.temp) }]}>
                                 {item.temp}°
                             </Text>
-                        </View>
+                        </TouchableOpacity>
                     </Animated.View>
                 ))}
             </ScrollView>

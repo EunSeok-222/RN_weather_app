@@ -15,6 +15,15 @@ export interface HourlyForecastResult {
     hasBigTempGap: boolean; // 일교차 ≥ 10°C
     minTemp: number;
     maxTemp: number;
+    todayDaily?: {
+        temp: {
+            min: number;
+            max: number;
+            day: number;
+        };
+        wind_speed: number;
+        humidity: number;
+    };
 }
 
 /**
@@ -86,7 +95,18 @@ async function fetchHourlyForecast(
     const maxTemp = Math.max(...temps);
     const hasBigTempGap = (maxTemp - minTemp) >= 10;
 
-    return { items, hasBigTempGap, minTemp, maxTemp };
+    // 일일 데이터 요약 (analyzeWeather 용)
+    const todayDaily = {
+        temp: {
+            min: minTemp,
+            max: maxTemp,
+            day: items.length > 0 ? items[0].temp : 0, // 현재 시간대 기온을 대표값으로 사용
+        },
+        wind_speed: todayForecasts.length > 0 ? todayForecasts[0].wind.speed : 0,
+        humidity: todayForecasts.length > 0 ? todayForecasts[0].main.humidity : 0,
+    };
+
+    return { items, hasBigTempGap, minTemp, maxTemp, todayDaily };
 }
 
 export const useHourlyForecast = (
