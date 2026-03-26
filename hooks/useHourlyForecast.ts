@@ -4,6 +4,7 @@ import { OutfitCategory, getFallbackOutfit } from '../services/outfitService';
 const myApiKey = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
 export interface HourlyForecastItem {
+    dt: number;         // 타임스탬프 추가
     time: string;       // "09시", "12시" 등
     temp: number;       // 반올림된 기온
     category: OutfitCategory;
@@ -71,6 +72,7 @@ async function fetchHourlyForecast(
         const hour = dt.getHours();
         const roundedTemp = Math.round(item.main.temp);
         return {
+            dt: item.dt,
             time: `${hour}시`,
             temp: roundedTemp,
             category: getFallbackOutfit(roundedTemp).category,
