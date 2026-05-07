@@ -21,15 +21,49 @@ export interface OutfitRecommendation {
 /**
  * API 호출 실패 시 또는 보조 로직으로 사용될 온도 기반 기본 옷차림 추천 함수입니다.
  */
-export function getFallbackOutfit(temp: number): { recommendation: string; category: OutfitCategory } {
-    if (temp <= 5) return { recommendation: "패딩이나 두꺼운 코트를 꼭 챙기세요!", category: 'heavy_outer' };
-    if (temp <= 9) return { recommendation: "코트나 가죽재킷이 적당한 날씨예요.", category: 'coat' };
-    if (temp <= 11) return { recommendation: "트렌치코트나 가벼운 점퍼를 입어보세요.", category: 'jacket' };
-    if (temp <= 16) return { recommendation: "가디건이나 니트가 잘 어울리는 날씨예요.", category: 'light_knit' };
-    if (temp <= 19) return { recommendation: "가벼운 후드티나 맨투맨을 추천합니다.", category: 'hoodie' };
-    if (temp <= 22) return { recommendation: "셔츠나 긴팔 티셔츠가 적당해요.", category: 'long_sleeve' };
-    if (temp <= 27) return { recommendation: "반팔 티셔츠를 입기에 딱 좋은 날씨예요.", category: 'short_sleeve' };
-    return { recommendation: "민소매나 얇은 린넨 옷이 시원할 거예요.", category: 'sleeveless' };
+export function getFallbackOutfit(temp: number): {
+  recommendation: string;
+  category: OutfitCategory;
+} {
+  if (temp <= 5)
+    return {
+      recommendation: "패딩이나 두꺼운 코트를 꼭 챙기세요!",
+      category: "heavy_outer",
+    };
+  if (temp <= 9)
+    return {
+      recommendation: "코트나 가죽재킷이 적당한 날씨예요.",
+      category: "coat",
+    };
+  if (temp <= 11)
+    return {
+      recommendation: "트렌치코트나 가벼운 점퍼를 입어보세요.",
+      category: "jacket",
+    };
+  if (temp <= 16)
+    return {
+      recommendation: "가디건이나 니트가 잘 어울리는 날씨예요.",
+      category: "light_knit",
+    };
+  if (temp <= 19)
+    return {
+      recommendation: "가벼운 후드티나 맨투맨을 추천합니다.",
+      category: "hoodie",
+    };
+  if (temp <= 22)
+    return {
+      recommendation: "셔츠나 긴팔 티셔츠가 적당해요.",
+      category: "long_sleeve",
+    };
+  if (temp <= 27)
+    return {
+      recommendation: "반팔 티셔츠를 입기에 딱 좋은 날씨예요.",
+      category: "short_sleeve",
+    };
+  return {
+    recommendation: "민소매나 얇은 린넨 옷이 시원할 거예요.",
+    category: "sleeveless",
+  };
 }
 
 export const getOutfitRecommendation = async (
@@ -45,27 +79,32 @@ export const getOutfitRecommendation = async (
   }
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash", // 모델명 업데이트 (필요 시)
+    model: "gemini-2.5-flash", // 모델명 업데이트 (필요 시)
     systemInstruction:
       '당신은 20대 패션에 관심이 많은 친근하고 센스 있는 친구입니다. 사용자의 날씨(온도, 풍속, 상태)를 바탕으로 옷차림을 추천해주세요. 30자 이내의 짧고 세련된 문장으로 반환해야 합니다. 응답은 반드시 JSON 형식으로 다음 구조를 따라야 합니다: { "recommendation": "추천 문구(30자 이내)", "category": "heavy_outer | coat | jacket | light_knit | hoodie | long_sleeve | short_sleeve | sleeveless 중 하나" }',
   });
 
+  console.log("Gemini 요청 전송 중... 온도:", temp, "상태:", weatherStatus);
   const prompt = `현재 날씨 상태: ${weatherStatus}, 온도: ${temp}도, 풍속: ${windSpeed}m/s. 추천해줘!`;
 
   try {
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
+    console.log("Gemini 응답 수신:", responseText);
+
     const jsonStrMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonStrMatch) {
       const data = JSON.parse(jsonStrMatch[0]);
+      console.log("파싱된 데이터:", data);
       return {
         recommendation: data.recommendation,
         category: data.category as OutfitCategory,
       };
     }
+    console.error("JSON 형식을 찾을 수 없음. 응답 전문:", responseText);
     throw new Error("Invalid response format");
   } catch (error) {
-    console.warn("Gemini API error (fallback used):", error);
+    console.error("Gemini API Error 상세:", error);
     return getFallbackOutfit(temp);
   }
 };
